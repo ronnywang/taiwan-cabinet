@@ -4,9 +4,16 @@ class WikiInfoGetter
 {
     public static function query($name)
     {
-        $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
-        error_log($name . ' ' . $url);
-        $content = file_get_contents($url);
+        $target = __DIR__  . '/cache/' . $name . '.html';
+        if (file_exists($target)) {
+            $content = file_get_contents($target);
+        } else {
+            $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
+            error_log($name . ' ' . $url);
+            $content = file_get_contents($url);
+            file_put_contents($target, $content);
+        }
+
         if (!$content) {
             throw new Exception('404');
         }
@@ -122,13 +129,8 @@ $query_and_cache = function($name){
     if ($name === false) {
         return new StdClass;
     }
-    $target = __DIR__ . '/cache/' . $name . '.json';
-    if (file_exists($target)) { // and file_get_contents($target) != '{}') {
-        return json_decode(file_get_contents($target));
-    }
 
     $result = WikiInfoGetter::query($name);
-    file_put_contents($target, json_encode($result, JSON_UNESCAPED_UNICODE));
     return $result;
 };
 
