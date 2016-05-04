@@ -85,23 +85,30 @@ class WikiInfoGetter
             $name = $doc->getElementById('firstHeading')->nodeValue;
             $name = preg_replace('# \([^)]*\)#', '', $name);
 
-            $content = '';
+            $text = '';
             foreach ($doc->getElementsByTagName('b') as $b_dom) {
                 if ($b_dom->childNodes->item(0)->nodeName == '#text' and $b_dom->nodeValue == $name or $b_dom->nodeValue == $name . '博士') {
-                    $content = '';
+                    $text = '';
                     $d = $b_dom;
                     for ($i = 0; $i < 100 and $d = $d->nextSibling; $i ++) {
-                        $content .= trim($d->nodeValue);
+                        $text .= trim($d->nodeValue);
                         $d = $d->nextSibling;
                     }
                     break;
                 }
             }
-            $content = mb_substr($content, 0, 50);
+            $text = mb_substr($text, 0, 50);
 
-            if (preg_match('#\d+年\d*月?\d*日?#u', $content, $matches)) {
+            if (preg_match('#\d+年\d*月?\d*日?#u', $text, $matches)) {
                 $info->{'出生'} = $matches[0];
+                break;
             }
+
+            if (preG_match('#(\d{4}年)出生#', $content, $matches)) {
+                $info->{'出生'} = $matches[1];
+                break;
+            }
+
             break;
         }
 
