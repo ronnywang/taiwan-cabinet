@@ -73,17 +73,49 @@ class WikiInfoGetter
             }
         }
 
-        if (json_encode($info) == '{}') {
-            preg_match('#<h1 id="firstHeading" class="firstHeading" lang="zh-TW">([^<]*)</h1>#', $content, $matches);
-            $name = $matches[1];
+        while (!property_exists($info, '出生')) {
+            foreach ($doc->getElementsByTagName('span') as $span_dom) {
+                if ($span_dom->getAttribute('class') == 'bday') {
+                    list($y, $m, $d) = array_map('intval', explode('-', $span_dom->nodeValue));
+                    $info->{'出生'} = "{$y}年{$m}月{$d}日";
+                    break 2;
+                }
+            }
+
+            $name = $doc->getElementById('firstHeading')->nodeValue;
             $name = preg_replace('# \([^)]*\)#', '', $name);
 
-            if (preg_match('#' . $name . '.{0,10}[（(]?([^，）]*，)?(\d+年\d*月?\d*日?)#u', strip_tags($content), $matches)) {
-                $info->{'出生'} = $matches[2];
-            } else {
-                return $info;
+            $content = '';
+            foreach ($doc->getElementsByTagName('b') as $b_dom) {
+                if ($b_dom->childNodes->item(0)->nodeName == '#text' and $b_dom->nodeValue == $name or $b_dom->nodeValue == $name . '博士') {
+                    $content = '';
+                    $d = $b_dom;
+                    for ($i = 0; $i < 100 and $d = $d->nextSibling; $i ++) {
+                        $content .= trim($d->nodeValue);
+                        $d = $d->nextSibling;
+                    }
+                    break;
+                }
             }
+            $content = mb_substr($content, 0, 50);
+
+            if (preg_match('#\d+年\d*月?\d*日?#u', $content, $matches)) {
+                $info->{'出生'} = $matches[0];
+            }
+            break;
         }
+
+        while (!property_exists($info, '性別')) {
+            foreach ($doc->getElementsByTagName('th') as $th_dom) {
+                if ($th_dom->nodeValue == '性別') {
+                    $info->{'性別'} = trim($th_dom->nextSibling->nextSibling->nodeValue);
+                    break 2;
+                }
+            }
+
+            break;
+        }
+
         return $info;
     }
 }
