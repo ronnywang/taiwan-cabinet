@@ -151,6 +151,9 @@ $query_and_cache = function($name){
         '夷將·拔路兒（劉文雄）' => '夷將·拔路兒',
         '王師曾' => '王師曾_(涪陵)',
         '王郡' => false,
+        '郭澄' => false,
+        '陳德華' => false,
+        '李建中' => false,
     );
     $name = str_replace('　', '', $name);
     $name = str_replace(' ', '', $name);
@@ -190,7 +193,7 @@ while ($rows = fgetcsv($fp)) {
             throw new Exception($failed[$name]);
         }
         $info = $query_and_cache($name);
-        if (property_exists($info, '出生') and preg_match('#\d+年\d*月?\d*日?#u', $info->{'出生'}, $matches)) {
+        if (property_exists($info, '出生') and preg_match('#\d{4}年\d*月?\d*日?#u', $info->{'出生'}, $matches)) {
             $birth = $matches[0];
         }
         if (property_exists($info, '性別')) {
