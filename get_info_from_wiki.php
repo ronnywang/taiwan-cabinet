@@ -162,9 +162,6 @@ $query_and_cache = function($name){
         '陳德華' => false,
         '李建中' => false,
     );
-    $name = str_replace('　', '', $name);
-    $name = str_replace(' ', '', $name);
-    $name = trim($name);
     if (array_key_exists($name, $map)) {
         $name = $map[$name];
     }
@@ -192,6 +189,9 @@ while ($rows = fgetcsv($fp)) {
     }
 
     $name = preg_replace('#（二次）#', '', $name);
+    $name = str_replace(' ', '', $name);
+    $name = str_replace('　', '', $name);
+    $name = trim($name);
 
     $birth = '';
     $gender = '';
