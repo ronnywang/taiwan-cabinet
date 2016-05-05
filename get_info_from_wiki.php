@@ -184,6 +184,7 @@ fputcsv($output, array(
     '職稱','姓名','到職','卸任','出生','性別'
 ));
 $gender_map = array('男性' => 'M', '男' => 'M', '女性' => 'F', '女' => 'F');
+$zhengwei_gender = array();
 while ($rows = fgetcsv($fp)) {
     list($title, $name, $start, $end) = $rows;
     if ($title == '職稱') {
@@ -218,7 +219,12 @@ while ($rows = fgetcsv($fp)) {
         if ($gender and $gender != $rows[4]) {
             die ("{$name} 的性別不同步 {$gender}");
         }
+        $zhengwei_gender[$name] = $rows[4];
         $gender = $rows[4];
+    }
+
+    if (!$gender and array_key_exists($name, $zhengwei_gender)) {
+        $gender = $zhengwei_gender[$name];
     }
     if (!preg_match('#^\d+年\d*月?\d*日?#u', $start, $matches)) {
         $start = '';
