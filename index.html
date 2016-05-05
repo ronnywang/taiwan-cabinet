@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>台灣內閣變化</title>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.css">
+</head>
+<body>
+<div class="container">
+    <form id="form">
+        日期: <input type="text" id="date" value="2016/5/1"><button type="submit">Refresh</button>
+    </form>
+    <ul class="list-inline" id="leader-list"></ul>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>男</th>
+                <th>女</th>
+                <th>未知</th>
+            </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td id="gender-M"></td>
+            <td id="gender-F"></td>
+            <td id="gender-X"></td>
+        </tr>
+    </table>
+    <table class="table" id="age-table">
+    </table>
+    <h3 id="leader">閣揆</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>職稱</th>
+                <th>姓名</th>
+                <th>到職</th>
+                <th>卸任</th>
+                <th>生日</th>
+                <th>年齡</th>
+                <th>性別</th>
+            </tr>
+        </thead>
+        <tbody id="result">
+        </tbody>
+    </table>
+</div>
+<script>
+var records = [];
+
+var get_date_from_string = function(str, is_start){
+    if (!str) {
+        return null;
+    }
+    var matches = str.match(/(\d+)年((\d+)月)?((\d+)日)?/);
+    if (!matches) {
+        return null;
+    }
+    var year = matches[1];
+    var month = matches[3];
+    if (!month) {
+        month = is_start ? 1 : 12;
+    }
+    var day = matches[5];
+    if (!day) {
+        day = is_start ? 1 : 31;
+    }
+    return new Date(year, month - 1, day);
+};
+
+$('#form').submit(function(e){
+    e.preventDefault();
+    var d = new Date($('#date').val());
+    var filtered_records = records.filter(function(record){
+        var s = get_date_from_string(record['到職'], true);
+        if (s > d) {
+            return false;
+        }
+        var e = get_date_from_string(record['卸任'], false);
+        if (e && e < d) {
+            return false;
+        }
+        return true;
+    });
+
+    $('#result').html('');
+    var gender_count = {'M': 0, 'F': 0, 'X': 0};
+    var age_count = {};
+    filtered_records.sort(function(a, b){
+            return (new Date(get_date_from_string(a['出生']))) - (new Date(get_date_from_string(b['出生'])));
+            });
+    filtered_records.map(function(record){
+        if (record['職稱'] == '行政院/院長') {
+            $('#leader').text(record['姓名'] + '內閣');
+        }
+        if (record['性別']) {
+            gender_count[record['性別']] ++;
+        } else {
+            gender_count['X'] ++;
+        }
+
+        age = '';
+        if (record['出生']) {
+            var b = get_date_from_string(record['出生']);
+            age = d.getFullYear() - b.getFullYear();
+            if ('undefined' === typeof(age_count[age])) {
+                age_count[age] = 0;
+            }
+            age_count[age] ++;
+        } else {
+            if ('undefined' === typeof(age_count['X'])) {
+                age_count['X'] = 0;
+            }
+            age_count['X'] ++;
+        }
+        var tr_dom = $('<tr></tr>');
+        tr_dom.append($('<td></td>').text(record['職稱']));
+        tr_dom.append($('<td></td>').text(record['姓名']));
+        tr_dom.append($('<td></td>').text(record['到職']));
+        tr_dom.append($('<td></td>').text(record['卸任']));
+        tr_dom.append($('<td></td>').text(record['出生']));
+        tr_dom.append($('<td></td>').text(age));
+        tr_dom.append($('<td></td>').text(record['性別']));
+
+        $('#result').append(tr_dom);
+    });
+    var age_list = [];
+    for (var i in age_count) {
+        age_list.push([i, age_count[i]]);
+    }
+    age_list.sort(function(a, b){ return b[1] - a[1]; });
+    var thead_dom = $('<tr></tr>');
+    var tbody_dom = $('<tr></tr>');
+    age_list.map(function(age_count){
+            thead_dom.append($('<th></td>').text(age_count[0]));
+            tbody_dom.append($('<td></td>').text(age_count[1]));
+            });
+    $('#age-table')
+        .html('')
+        .append($('<thead></thead>').append(thead_dom))
+        .append($('<tbody></tbody>').append(tbody_dom));
+
+    for (var i in gender_count) {
+        $('#gender-' + i).text(gender_count[i]);
+    }
+});
+$.get('result.csv', function(content){
+    var lines = content.split("\n");
+    leader_list = [];
+    columns = lines.shift().split(',');
+    records = lines.filter(function(l) { return $.trim(l); }).map(function(line){
+            var record = {};
+            var values = line.split(',');
+            for (var i = 0; i < columns.length; i ++) {
+                record[columns[i]] = values[i];
+            }
+            if (record['職稱'] == '行政院/院長') {
+                leader_list.push({
+                    name: record['姓名'],
+                    start: get_date_from_string(record['到職']),
+                });
+            }
+            return record;
+    });
+    leader_list.sort(function(a, b){ return b.start - a.start; });
+
+    $('#leader-list').html('');
+    leader_list.map(function(leader){
+            $('#leader-list').append($('<li></li>').append($('<a></a>').attr('href', '#').text(leader.name).data('data', leader)));
+    });
+    var d = new Date;
+    $('#date').val([d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/'));
+    $('#form').submit();
+}, 'text');
+
+$('#leader-list').on('click', 'a', function(e){
+    e.preventDefault();
+    var d = new Date;
+    d.setTime($(this).data('data').start.getTime() + 86400000);
+    $('#date').val([d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/'));
+    $('#form').submit();
+});
+</script>
+</body>
+</html>
