@@ -111,7 +111,7 @@ $('#form').submit(function(e){
 
     filtered_records.map(function(record){
         if (record['職稱'] == '行政院/院長') {
-            $('#leader').text(record['姓名'] + '內閣');
+            $('#leader').html( '<span>' + record['姓名'] + '</span>內閣');
         }
 
         if ('undefined' === typeof(name_counted[record['姓名']])) {
@@ -204,6 +204,18 @@ $('#leader-list').on('click', 'a', function(e){
     $('#date').val([d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/'));
     $('#form').submit();
 });
+
+$(document).on('keyup', function (e) {
+    var current_leader = $("#leader span").text();
+    var current_leader_link = $( "#leader-list a:contains(" + current_leader + ")" );
+
+    if (e.keyCode == 37) {
+        current_leader_link.parent().prev().find("a").click();
+    } else if (e.keyCode==39) {
+        current_leader_link.parent().next().find("a").click();
+    }
+});
+
 </script>
 </body>
 </html>
