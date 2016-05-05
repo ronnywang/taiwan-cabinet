@@ -7,11 +7,28 @@
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.css">
 </head>
 <body>
+<nav class="navbar navbar-default">
+    <div class="navbar-header">
+        <a class="navbar-brand" href="/">台灣內閣變化</a>
+        <ul class="navbar-nav nav">
+            <li>
+            <a href="https://github.com/ronnywang/taiwan-cabinet">GitHub 程式碼與資料</a>
+            </li>
+            <li>
+            <a href="http://ronny.tw/">@ronnywang</a>
+            </li>
+        </ul>
+    </div>
+</nav>
 <div class="container">
+
+    <p>這是利用 wikipedia 上面各行政單位的首長上任卸任記錄，加上 wikipedia 上各人物條目內的性別和出生年月日資訊，所做出來的歷任內閣年齡以及性別比例分析(PS: 由於資料來源為 wikipedia ，若 wikipedia 上無資料則為未知)
+    </p>
+
+    點選內閣 <ul class="list-inline" id="leader-list"></ul>
     <form id="form">
-        日期: <input type="text" id="date" value="2016/5/1"><button type="submit">Refresh</button>
+        或是手動輸入日期: <input type="text" id="date" value="2016/5/1"><button type="submit">Refresh</button>
     </form>
-    <ul class="list-inline" id="leader-list"></ul>
     <table class="table">
         <thead>
             <tr>
