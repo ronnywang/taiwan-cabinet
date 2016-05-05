@@ -107,29 +107,35 @@ $('#form').submit(function(e){
     filtered_records.sort(function(a, b){
             return (new Date(get_date_from_string(a['出生']))) - (new Date(get_date_from_string(b['出生'])));
             });
+    var name_counted = {};
+
     filtered_records.map(function(record){
         if (record['職稱'] == '行政院/院長') {
             $('#leader').text(record['姓名'] + '內閣');
         }
-        if (record['性別']) {
-            gender_count[record['性別']] ++;
-        } else {
-            gender_count['X'] ++;
-        }
 
-        age = '';
-        if (record['出生']) {
-            var b = get_date_from_string(record['出生']);
-            age = d.getFullYear() - b.getFullYear();
-            if ('undefined' === typeof(age_count[age])) {
-                age_count[age] = 0;
+        if ('undefined' === typeof(name_counted[record['姓名']])) {
+            if (record['性別']) {
+                gender_count[record['性別']] ++;
+            } else {
+                gender_count['X'] ++;
             }
-            age_count[age] ++;
-        } else {
-            if ('undefined' === typeof(age_count['X'])) {
-                age_count['X'] = 0;
+
+            age = '';
+            if (record['出生']) {
+                var b = get_date_from_string(record['出生']);
+                age = d.getFullYear() - b.getFullYear();
+                if ('undefined' === typeof(age_count[age])) {
+                    age_count[age] = 0;
+                }
+                age_count[age] ++;
+            } else {
+                if ('undefined' === typeof(age_count['X'])) {
+                    age_count['X'] = 0;
+                }
+                age_count['X'] ++;
             }
-            age_count['X'] ++;
+            name_counted[record['姓名']] = true;
         }
         var tr_dom = $('<tr></tr>');
         tr_dom.append($('<td></td>').text(record['職稱']));
