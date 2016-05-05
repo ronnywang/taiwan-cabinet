@@ -1,6 +1,8 @@
 # taiwan-cabinet
 透過 wikipedia 的資料，找出中華民國歷年來的閣員名單、性別、生日等，以便計算歷年的性別比例和平均年齡變化比較
 
+展示頁面： https://ronnywang.github.io/taiwan-cabinet/
+
 使用方式
 ========
 ```
