@@ -120,6 +120,13 @@ class WikiInfoGetter
                 }
             }
 
+            foreach ($doc->getElementById('catlinks')->getElementsByTagName('li') as $li_dom) {
+                if (in_array($li_dom->nodeValue, array('臺灣女性行政官員'))) {
+                    $info->{'性別'} = '女性';
+                    break 2;
+                }
+            }
+
             break;
         }
 
