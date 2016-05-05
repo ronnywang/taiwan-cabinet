@@ -111,7 +111,7 @@ $('#form').submit(function(e){
 
     filtered_records.map(function(record){
         if (record['職稱'] == '行政院/院長') {
-            $('#leader').html( '<span>' + record['姓名'] + '</span>內閣');
+            $('#leader').append($('<span></span>').text(record['姓名']));
         }
 
         if ('undefined' === typeof(name_counted[record['姓名']])) {
