@@ -17,4 +17,4 @@ PHP 爬蟲及 javascript 展示頁面以 BSD License 開放授權
 
 資料授權
 ========
-資料是來自維基百科，以 (https://zh.wikipedia.org/zh-tw/Wikipedia%3ACC\_BY-SA\_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC)[創用CC 姓名標示-相同方式分享 3.0 協議] 授權
+資料是來自維基百科，以 [創用CC 姓名標示-相同方式分享 3.0 協議](https://zh.wikipedia.org/zh-tw/Wikipedia%3ACC\_BY-SA\_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC) 授權
