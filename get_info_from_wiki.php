@@ -182,6 +182,13 @@ $query_and_cache = function($name){
 
 $failed = json_decode(file_get_contents('failed'), true) ?: array();
 
+$fp = fopen('sweetcow.csv', 'r');
+fgetcsv($fp);
+$other_gender = array();
+while ($rows = fgetcsv($fp)) {
+    $other_gender[$rows[1]] = $rows[5];
+}
+
 $fp = popen('cat 行政院-政務委員.csv 行政院-閣員.csv', 'r');
 $output = fopen('php://output', 'w');
 fputcsv($output, array(
@@ -232,6 +239,9 @@ while ($rows = fgetcsv($fp)) {
 
     if (!$gender and array_key_exists($name, $zhengwei_gender)) {
         $gender = $zhengwei_gender[$name];
+    }
+    if (!$gender and array_key_exists($name, $other_gender)) {
+        $gender = $other_gender[$name];
     }
     if (!preg_match('#^\d+年\d*月?\d*日?#u', $start, $matches)) {
         $start = '';
