@@ -1,0 +1,39 @@
+{
+  "author": "ronnywang",
+  "status": "Released",
+  "name": "taiwan-cabinet",
+  "name_zh": "台灣內閣變化",
+  "description": "",
+  "description_zh": "透過 wikipedia 的資料，找出中華民國歷年來的閣員名單、性別、生日等，以便計算歷年的性別比例和平均年齡變化比較",
+  "homepage": "https://ronnywang.github.io/taiwan-cabinet/",
+  "document": "https://github.com/ronnywang/taiwan-cabinet/blob/master/README.md",
+  "thumbnail": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ronnywang/taiwan-cabinet"
+  },
+  "licenses": [
+    {
+      "type": "CC 3.0"
+    }
+  ],
+  "keywords": [
+    "cabinet"
+  ],
+  "audience": [
+    ""
+  ],
+  "products": [
+    ""
+  ],
+  "projects": [
+    ""
+  ],
+  "contributors": [
+    "ronnywang",
+    "ihower"
+  ],
+  "needs": [
+    ""
+  ]
+}
