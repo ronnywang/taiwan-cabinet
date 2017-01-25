@@ -13,18 +13,23 @@ foreach ($doc->getElementsByTagName('li') as $li_dom) {
         }
         $text = $a_dom->nextSibling->nodeValue;
         $title = $a_dom->getAttribute('title');
-           
-        if (preg_match('#(先生|女士) ?（任期：([0-9.]+) - ([0-9.]+)?\s*）#u', $text, $matches)) {
-            $gender = $matches[1] == '先生' ? 'M' : 'F';
-            $name = trim($name);
-            list($sy, $sm, $sd) = explode('.', $matches[2]);
-            $sy += 1911;
-            if (array_key_exists(3, $matches)) {
-                list($ey, $em, $ed) = explode('.', $matches[3]);
-                $ey += 1911;
-                echo "行政院/政務委員,{$name},{$sy}年{$sm}月{$sd}日,{$ey}年{$em}月{$ed}日,{$gender},{$title}\n";
-            } else {
-                echo "行政院/政務委員,{$name},{$sy}年{$sm}月{$sd}日,2016年5月20日,{$gender},{$title}\n";
+
+        if (preg_match_all('#(先生|女士)\s*（任期：([0-9.]+)\s*-\s*([0-9.]+)?\s*）#u', $text, $matches_all)) {
+            foreach ($matches_all[0] as $id => $t) {
+                $matches = array_map(function($m) use ($id, $matches_all) {
+                    return $matches_all[$m][$id];
+                }, array_keys($matches_all));
+                $gender = $matches[1] == '先生' ? 'M' : 'F';
+                $name = trim($name);
+                list($sy, $sm, $sd) = explode('.', $matches[2]);
+                $sy += 1911;
+                if (array_key_exists(3, $matches)) {
+                    list($ey, $em, $ed) = explode('.', $matches[3]);
+                    $ey += 1911;
+                    echo "行政院/政務委員,{$name},{$sy}年{$sm}月{$sd}日,{$ey}年{$em}月{$ed}日,{$gender},{$title}\n";
+                } else {
+                    echo "行政院/政務委員,{$name},{$sy}年{$sm}月{$sd}日,2016年5月20日,{$gender},{$title}\n";
+                }
             }
         } else if (preg_match('#（(\d+年\d+月\d+日)－\s*）#', $text, $matches)) {
             echo "行政院/政務委員,{$name},{$matches[1]},,,,{$title}\n";
