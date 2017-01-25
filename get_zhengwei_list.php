@@ -31,8 +31,8 @@ foreach ($doc->getElementsByTagName('li') as $li_dom) {
                     echo "行政院/政務委員,{$name},{$sy}年{$sm}月{$sd}日,2016年5月20日,{$gender},{$title}\n";
                 }
             }
-        } else if (preg_match('#（(\d+年\d+月\d+日)－\s*）#', $text, $matches)) {
-            echo "行政院/政務委員,{$name},{$matches[1]},,,,{$title}\n";
+        } else if (preg_match('#（(\d+年\d+月\d+日)－(\d+年\d+月\d+日)?\s*）#', $text, $matches)) {
+            echo "行政院/政務委員,{$name},{$matches[1]},{$matches[2]},,,{$title}\n";
         }
     }
 
