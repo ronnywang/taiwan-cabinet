@@ -95,7 +95,7 @@ $('#form').submit(function(e){
             return false;
         }
         var e = get_date_from_string(record['卸任'], false);
-        if (e && e <= d) {
+        if (e && e < d) {
             return false;
         }
         return true;
