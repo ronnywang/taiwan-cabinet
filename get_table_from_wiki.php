@@ -140,16 +140,47 @@ $prev_date = function($d) {
 
 $output = fopen('php://output', 'w');
 echo "職稱,姓名,到職,卸任\n";
+$result = array();
+
+$add_result = function($title, $name, $start, $end) use (&$result, $prev_date) {
+    $result[] = array(
+        $title,
+        $name,
+        $start,
+        $end,
+    );
+
+    // 處理沒有卸任時間或是卸任時間跟到職日同一天的情況
+    $pos = count($result) - 1;
+    if ($pos == 0) {
+        return;
+    }
+
+    if ($result[$pos - 1][0] != $result[$pos][0]) {
+        // 如果職稱不一樣就不管他了
+        return;
+    }
+
+    if (!$result[$pos - 1][3]) {
+        $result[$pos - 1][3] = $prev_date($result[$pos][2]);
+        return;
+    }
+
+    if ($result[$pos - 1][3] == $result[$pos][2] and strpos($result[$pos][2], '日')) {
+        $result[$pos - 1][3] = $prev_date($result[$pos][2]);
+        return;
+    }
+};
 
 $k = '行政院/秘書長';
 foreach (WikiTableParser::getTable('行政院秘書長') as $table) {
     foreach ($table as $record) {
-        fputcsv($output, array(
+        $add_result(
             $k,
             $record['姓名'],
             $record['任職期間/到任時間'],
-            $record['任職期間/卸任時間'],
-        ));
+            $record['任職期間/卸任時間']
+        );
     }
 }
 
@@ -157,21 +188,21 @@ foreach (WikiTableParser::getTable('行政院秘書長') as $table) {
 
 $k = '行政院/發言人';
 $tables = WikiTableParser::getTable('行政院新聞傳播處');
-foreach ($tables[2] as $record) {
-    fputcsv($output, array(
+foreach ($tables[0] as $record) {
+    $add_result(
         '行政院新聞局/局長',
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'],
-    ));
+        $record['卸任時間']
+    );
 }
-foreach ($tables[3] as $record) {
-    fputcsv($output, array(
+foreach ($tables[1] as $record) {
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'],
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '內政部/部長';
@@ -180,34 +211,34 @@ foreach ($tables[0] as $record) {
     if ('中華民國內政部部長' != $record['group']) {
         continue;
     }
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'],
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '外交部/部長';
 $tables = WikiTableParser::getTable('中華民國外交部');
 foreach ($tables[3] as $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓　名'],
         $record['上任日期'],
-        $record['離任日期'],
-    ));
+        $record['離任日期']
+    );
 }
 
 $k = '國防部/部長';
 $tables = WikiTableParser::getTable('中華民國國防部');
 foreach ($tables[9] as $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'],
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '財政部/部長';
@@ -216,12 +247,12 @@ foreach ($tables[0] as $id => $record) {
     if ('財政部部長（行憲後）' != $record['group']) {
         continue;
     }
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 
@@ -231,34 +262,34 @@ foreach ($tables[4] as $id => $record) {
     if ('未就任' == $record['備註']) {
         continue;
     }
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['上任時間'],
-        $record['卸任時間'] ?: $prev_date($tables[4][$id + 1]['上任時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '法務部/部長';
 $tables = WikiTableParser::getTable('中華民國' . explode('/', $k)[0]);
 foreach ($tables[5] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[5][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '經濟部/部長';
 $tables = WikiTableParser::getTable('中華民國' . explode('/', $k)[0]);
 foreach ($tables[3] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[3][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '交通部/部長';
@@ -267,12 +298,12 @@ foreach ($tables[0] as $id => $record) {
     if ('行憲後' != $record['group']) {
         continue;
     }
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['任職期間/到任時間'],
-        $record['任職期間/卸任時間'] ?: $prev_date($tables[0][$id + 1]['任職期間/到任時間']),
-    ));
+        $record['任職期間/卸任時間']
+    );
 }
 
 $k = '勞動部/部長';
@@ -284,12 +315,12 @@ foreach ($tables[0] as $id => $record) {
         $k = '勞動部/部長';
     }
         
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '衛生福利部/部長';
@@ -303,12 +334,12 @@ foreach ($tables[0] as $id => $record) {
         continue;
     }
 
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '文化部/部長';
@@ -321,12 +352,12 @@ foreach ($tables[0] as $id => $record) {
     } else {
         continue;
     }
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 
@@ -341,12 +372,12 @@ foreach ($tables[0] as $id => $record) {
         continue;
     }
 
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '國家發展委員會/主任委員';
@@ -354,12 +385,12 @@ $tables = WikiTableParser::getTable('中華民國' . explode('/', $k)[0]);
 foreach ($tables as $table) {
     foreach ($table as $id => $record) {
         $k = str_replace(' ', '/', $record['group']);
-        fputcsv($output, array(
+        $add_result(
             $k,
             $record['姓名'],
             $record['就職時間'],
-            $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-        ));
+            $record['卸任時間']
+        );
     }
 }
 
@@ -367,125 +398,125 @@ $k = '行政院農業委員會/主任委員';
 $tables = WikiTableParser::getTable('行政院農業委員會'); //
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院大陸委員會/主任委員';
 $tables = WikiTableParser::getTable('行政院大陸委員會');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '蒙藏委員會/委員長';
 $tables = WikiTableParser::getTable('蒙藏委員會');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '金融監督管理委員會/主任委員';
 $tables = WikiTableParser::getTable('金融監督管理委員會');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '僑務委員會/委員長';
 $tables = WikiTableParser::getTable('僑務委員會');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院環境保護署/署長';
 $tables = WikiTableParser::getTable('行政院環境保護署');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院海岸巡防署/署長';
 $tables = WikiTableParser::getTable('行政院海岸巡防署');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '國軍退除役官兵輔導委員會/主任委員';
 $tables = WikiTableParser::getTable('國軍退除役官兵輔導委員會');
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '原住民族委員會/主任委員';
 $tables = WikiTableParser::getTable('原住民族委員會');
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
-        $record['姓名（漢名）'],
+        $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '客家委員會/主任委員';
 $tables = WikiTableParser::getTable('客家委員會');
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院公共工程委員會/主任委員';
 $tables = WikiTableParser::getTable('行政院公共工程委員會');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '中央銀行/總裁';
@@ -494,81 +525,81 @@ foreach ($tables[0] as $id => $record) {
     if ('總裁時期' !== $record['group']) {
         continue;
     }
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院主計總處/主計長';
 $tables = WikiTableParser::getTable('行政院主計總處');
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院人事行政總處/人事長';
 $tables = WikiTableParser::getTable('行政院人事行政總處');
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '國立故宮博物院/院長';
 $tables = WikiTableParser::getTable('國立故宮博物院');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '行政院原子能委員會/主任委員';
 $tables = WikiTableParser::getTable('行政院原子能委員會');
 foreach ($tables[0] as $id => $record) {
     $k = str_replace(' ', '/', $record['group']);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '中央選舉委員會/主任委員';
 $tables = WikiTableParser::getTable('中華民國中央選舉委員會');
 foreach ($tables[1] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就職時間'],
-        $record['卸任時間'] ?: $prev_date($tables[0][$id + 1]['就職時間']),
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '公平交易委員會/主任委員';
 $tables = WikiTableParser::getTable('中華民國公平交易委員會');
 foreach ($tables[0] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['就任時間'],
-        $record['卸任時間'],
-    ));
+        $record['卸任時間']
+    );
 }
 
 $k = '國家通訊傳播委員會/主任委員';
@@ -582,33 +613,37 @@ foreach ($tables as $table) {
             continue;
         }
         preg_match('#(\d+年\d+月\d+日)—(\d+年\d+月\d+日)#', $record['group'], $matches);
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $matches[1],
-        $matches[2],
-    ));
+        $matches[2]
+    );
 }
 }
 
 $k = '行政院/院長';
 $tables = WikiTableParser::getTable('行政院院長');
 foreach ($tables[1] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['任期/到任時間'],
-        $record['任期/卸任時間'] ?: $prev_date($tables[1][$id + 1]['任期/到任時間']),
-    ));
+        $record['任期/卸任時間']
+    );
 }
 
 $k = '行政院/副院長';
 $tables = WikiTableParser::getTable('行政院副院長');
 foreach ($tables[1] as $id => $record) {
-    fputcsv($output, array(
+    $add_result(
         $k,
         $record['姓名'],
         $record['任期/到任時間'],
-        $record['任期/卸任時間'] ?: $prev_date($tables[1][$id + 1]['任期/到任時間']),
-    ));
+        $record['任期/卸任時間']
+    );
+}
+
+foreach ($result as $record) {
+    fputcsv($output, $record);
 }
