@@ -1,5 +1,9 @@
 <?php
 
+class Error extends Exception
+{
+}
+
 class WikiInfoGetter
 {
     public static function query($name)
@@ -15,10 +19,10 @@ class WikiInfoGetter
         }
 
         if (!$content) {
-            throw new Exception('404');
+            throw new Error('404');
         }
         if (strpos($content, '羅列了有相同或相近的標題')) {
-            die ($name . ' 消歧義');
+            throw new Exception($name . ' 消歧義');
         }
         $doc = new DOMDocument;
         $doc->loadHTML($content);
@@ -45,7 +49,12 @@ class WikiInfoGetter
                 }
             } elseif (in_array($div_dom->nodeValue, array('經歷', '學歷'))) {
                 $tr_dom = $div_dom->parentNode->parentNode;
-                $next_tr_dom = $tr_dom->nextSibling;
+                if ($tr_dom->nodeName != 'tr') {
+                    continue;
+                }
+                if (!$next_tr_dom = $tr_dom->nextSibling) {
+                    continue;
+                }
 
                 $list = array();
                 error_log($th_dom->nodeValue);
@@ -74,6 +83,19 @@ class WikiInfoGetter
         }
 
         while (!property_exists($info, '出生')) {
+            foreach ($doc->getElementsByTagName('th') as $th_dom) {
+                if (trim($th_dom->nodeValue) !== '出生') {
+                    continue;
+                }
+                $td_dom = $th_dom;
+                while ($td_dom = $td_dom->nextSibling) {
+                    if ($td_dom->nodeName == 'td' and preg_match('#^[0-9]+年([0-9]+月[0-9]+日)?#', trim($td_dom->nodeValue), $matches)) {
+                        $info->{'出生'} = $matches[0];
+                        break 3;
+                    }
+                }
+            }
+
             foreach ($doc->getElementsByTagName('span') as $span_dom) {
                 if ($span_dom->getAttribute('class') == 'bday') {
                     list($y, $m, $d) = array_map('intval', explode('-', $span_dom->nodeValue));
@@ -212,7 +234,7 @@ while ($rows = fgetcsv($fp)) {
 
     try {
         if (array_key_exists($name, $failed)) {
-            throw new Exception($failed[$name]);
+            throw new Error($failed[$name]);
         }
         $info = $query_and_cache($name);
         if (property_exists($info, '出生') and preg_match('#\d{4}年\d*月?\d*日?#u', $info->{'出生'}, $matches)) {
@@ -221,17 +243,20 @@ while ($rows = fgetcsv($fp)) {
         if (property_exists($info, '性別')) {
             $gender = $info->{'性別'};
             if (!array_key_exists($gender, $gender_map)) {
-                die ("{$name} 的性別是 {$gender}");
+                throw new Exception("{$name} 的性別是 {$gender}");
             }
             $gender = $gender_map[$gender];
         }
-    } catch (Exception $e) {
+    } catch (Error $e) {
         $failed[$name] = $e->getMessage();
         file_put_contents('failed', json_encode($failed, JSON_UNESCAPED_UNICODE));
     }
     if (array_key_exists(4, $rows)) {
+        if (!$rows[4] and $gender) {
+            $rows[4] = $gender;
+        }
         if ($gender and $gender != $rows[4]) {
-            die ("{$name} 的性別不同步 {$gender}");
+            throw new Exception("{$name} 的性別不同步 {$gender} != {$rows[4]}");
         }
         $zhengwei_gender[$name] = $rows[4];
         $gender = $rows[4];
