@@ -116,7 +116,16 @@ class WikiInfoGetter
             foreach ($data->claims->P569 as $claim) {
                 $datavalue = $claim->mainsnak->datavalue;
                 if ((in_array($name, $only_year_names) or $datavalue->value->precision == 11) and preg_match('#\+(\d+)-(\d+)-(\d+)T00:00:00Z#', $datavalue->value->time, $matches)) {
-                    $info->{'出生'} = $matches[1] . '年' . $matches[2] . '月' . $matches[3] . '日';
+                    if ($datavalue->value->precision == 11) {
+                        $info->{'出生'} = $matches[1] . '年' . intval($matches[2]) . '月' . intval($matches[3]) . '日';
+                    } elseif ($datavalue->value->precision == 9) {
+                        $info->{'出生'} = $matches[1] . '年';
+                    } elseif ($datavalue->value->precision == 10) {
+                        $info->{'出生'} = $matches[1] . '年' . intval($matches[2]) . '月';
+                    } else {
+                        print_r($datavalue);
+                        throw new Exception('precision');
+                    }
                     break;
                 }
             }
