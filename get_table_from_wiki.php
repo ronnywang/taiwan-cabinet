@@ -113,10 +113,13 @@ class WikiTableParser
                             $col ++;
                         }
                     }
+                    if (in_array($values[0], array('階級識別', '文職', '軍職', '警務', '關務'))) {
+                        continue;
+                    }
                     if (count($columns) != count($values)) {
                         vaR_dump($columns);
                         var_dump($values);
-                        exit;
+                        throw new Exception("column value failed");
                     }
                     $rows = array_combine($columns, $values);
                     
