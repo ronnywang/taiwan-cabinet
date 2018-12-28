@@ -8,149 +8,138 @@ class WikiInfoGetter
 {
     public static function query($name)
     {
-        $target = __DIR__  . '/cache/' . $name . '.html';
+        $target = __DIR__  . '/cache/' . $name . '.json';
+        $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
         if (file_exists($target)) {
             $content = file_get_contents($target);
         } else {
-            $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
             error_log($name . ' ' . $url);
             $content = file_get_contents($url);
+            if (!$content) {
+                throw new Error('404');
+            }
+            if (strpos($content, '羅列了有相同或相近的標題')) {
+                throw new Exception($name . ' 消歧義');
+            }
+            if (!preg_match('#"wgWikibaseItemId":"([^"]*)"#', $content, $matches)) {
+                throw new Error("找不到 wiki data id");
+            }
+            $content = file_get_Contents("https://www.wikidata.org/wiki/Special:EntityData/{$matches[1]}.json?v=" . time());
+
             file_put_contents($target, $content);
         }
-
-        if (!$content) {
-            throw new Error('404');
-        }
-        if (strpos($content, '羅列了有相同或相近的標題')) {
-            throw new Exception($name . ' 消歧義');
-        }
-        $doc = new DOMDocument;
-        $doc->loadHTML($content);
-
+        $obj = json_decode($content);
+        $data = array_values(get_object_vars($obj->entities))[0];
         $info = new StdClass;
-        foreach ($doc->getElementsByTagName('div') as $div_dom) {
-            if ($div_dom->nodeValue == '個人資料') {
-                $tr_dom = $div_dom->parentNode->parentNode;
-                $next_tr_dom = $tr_dom;
-                while ($next_tr_dom = $next_tr_dom->nextSibling) {
-                    if ($next_tr_dom->getAttribute('colspan') == 2) {
-                        break;
-                    }
-                    $th_dom = $next_tr_dom->getElementsByTagName('th')->item(0);
-                    if ($th_dom and $th_dom->getAttribute('colspan') == 2) {
-                        break;
-                    }
-                    $td_dom = $next_tr_dom->getElementsByTagName('td')->item(0);
-                    if ($td_dom->getAttribute('colspan') == 2) {
-                        break;
-                    }
-
-                    $info->{$th_dom->nodeValue} = trim($td_dom->nodeValue);
-                }
-            } elseif (in_array($div_dom->nodeValue, array('經歷', '學歷'))) {
-                $tr_dom = $div_dom->parentNode->parentNode;
-                if ($tr_dom->nodeName != 'tr') {
-                    continue;
-                }
-                if (!$next_tr_dom = $tr_dom->nextSibling) {
-                    continue;
-                }
-
-                $list = array();
-                error_log($th_dom->nodeValue);
-                foreach ($next_tr_dom->getElementsByTagName('li') as $li_dom) {
-                    $t = trim($li_dom->nodeValue);
-
-                    $list[] = $t;
-                }
-                $info->{trim($div_dom->nodeValue)} = $list;
+        if (property_exists($data->claims, 'P21')) { // 性別
+            if ('6581097' == $data->claims->P21[0]->mainsnak->datavalue->value->{'numeric-id'}) {
+                $info->{'性別'} = '男';
+            } elseif ('6581072' == $data->claims->P21[0]->mainsnak->datavalue->value->{'numeric-id'}) {
+                $info->{'性別'} = '女';
+            } else {
+                print_r($data->claims->P21);
+                echo "https://www.wikidata.org/wiki/{$data->id}\n";
+                echo "$url\n";
+                echo $target . "\n";
+                exit;
             }
-        }
-        foreach ($doc->getElementsByTagName('th') as $th_dom) {
-            if (in_array($th_dom->nodeValue, array('經歷', '學歷')) and $th_dom->getAttribute('colspan') == 2) {
-                $tr_dom = $th_dom->parentNode;
-                $next_tr_dom = $tr_dom->nextSibling;
-
-                $list = array();
-                error_log($th_dom->nodeValue);
-                foreach ($next_tr_dom->getElementsByTagName('li') as $li_dom) {
-                    $t = trim($li_dom->nodeValue);
-
-                    $list[] = $t;
-                }
-                $info->{$th_dom->nodeValue} = $list;
-            }
+        } else {
+            echo "$url\n";
+            echo $target . "\n";
+            throw new Exception("找不到性別");
         }
 
-        while (!property_exists($info, '出生')) {
-            foreach ($doc->getElementsByTagName('th') as $th_dom) {
-                if (trim($th_dom->nodeValue) !== '出生') {
-                    continue;
-                }
-                $td_dom = $th_dom;
-                while ($td_dom = $td_dom->nextSibling) {
-                    if ($td_dom->nodeName == 'td' and preg_match('#^[0-9]+年([0-9]+月[0-9]+日)?#', trim($td_dom->nodeValue), $matches)) {
-                        $info->{'出生'} = $matches[0];
-                        break 3;
-                    }
-                }
-            }
-
-            foreach ($doc->getElementsByTagName('span') as $span_dom) {
-                if ($span_dom->getAttribute('class') == 'bday') {
-                    list($y, $m, $d) = array_map('intval', explode('-', $span_dom->nodeValue));
-                    $info->{'出生'} = "{$y}年{$m}月{$d}日";
-                    break 2;
-                }
-            }
-
-            $name = $doc->getElementById('firstHeading')->nodeValue;
-            $name = preg_replace('# \([^)]*\)#', '', $name);
-
-            $text = '';
-            foreach ($doc->getElementsByTagName('b') as $b_dom) {
-                if ($b_dom->childNodes->item(0)->nodeName == '#text' and $b_dom->nodeValue == $name or $b_dom->nodeValue == $name . '博士') {
-                    $text = '';
-                    $d = $b_dom;
-                    for ($i = 0; $i < 100 and $d = $d->nextSibling; $i ++) {
-                        $text .= trim($d->nodeValue);
-                        $d = $d->nextSibling;
-                    }
+        if (property_exists($data->claims, 'P569')) { // 出生
+            $only_year_names = array(
+                '劉航琛',
+                '萬鴻圖',
+                '董文琦',
+                '王師曾_(涪陵)',
+                '余井塘',
+                '田炯錦',
+                '蔣勻田',
+                '陳雪屏',
+                '林金生',
+                '張劍寒',
+                '陳錦煌',
+                '張有惠',
+                '葉國興',
+                '林萬億',
+                '葉欣誠',
+                '吳政忠',
+                '陳美伶',
+                '鄭洪年',
+                '甘乃光',
+                '李惟果',
+                '賈景德',
+                '陳慶瑜',
+                '端木愷',
+                '彭昭賢',
+                '洪蘭友',
+                '王德溥',
+                '袁守謙',
+                '黃杰_(將軍)',
+                '陳大慶',
+                '劉攻芸',
+                '呂有文',
+                '劉維熾',
+                '鄭道儒',
+                '陶聲洋',
+                '宗才怡',
+                '沈榮津',
+                '端木傑',
+                '鄭水枝',
+                '顏春輝',
+                '王金茂',
+                '蔣丙煌',
+                '林一平',
+                '施能傑',
+                '林祖嘉',
+                '李金龍_(園藝)',
+                '石青陽',
+                '黃慕松',
+                '許世英',
+                '張祖恩',
+                '張國龍',
+                '陳重信',
+                '趙聚鈺',
+                '張國英',
+                '王正誼_(中華民國)',
+                '陳清秀',
+                '吳泰成',
+                '劉義周',
+                '陳英鈐',
+                '蘇蘅',
+                '詹婷怡',
+                '顧孟餘',
+            );
+            foreach ($data->claims->P569 as $claim) {
+                $datavalue = $claim->mainsnak->datavalue;
+                if ((in_array($name, $only_year_names) or $datavalue->value->precision == 11) and preg_match('#\+(\d+)-(\d+)-(\d+)T00:00:00Z#', $datavalue->value->time, $matches)) {
+                    $info->{'出生'} = $matches[1] . '年' . $matches[2] . '月' . $matches[3] . '日';
                     break;
                 }
             }
-            $text = mb_substr($text, 0, 50);
-
-            if (preg_match('#\d+年\d*月?\d*日?#u', $text, $matches)) {
-                $info->{'出生'} = $matches[0];
-                break;
+            if (!$info->{'出生'}) {
+                print_r($data->claims->P569);
+                echo "https://www.wikidata.org/wiki/{$data->id}\n";
+                echo "$url\n";
+                echo $target . "\n";
+                exit;
             }
-
-            if (preG_match('#(\d{4}年)出生#', $content, $matches)) {
-                $info->{'出生'} = $matches[1];
-                break;
+        } else {
+            $skip_birth = array(
+                '吳宏謀',
+                '郝鳳鳴',
+                '陳時中_(政治人物)',
+            );
+            if (!in_array($name, $skip_birth)) {
+                echo "$url\n";
+                echo $target . "\n";
+                throw new Exception("找不到出生");
             }
-
-            break;
         }
-
-        while (!property_exists($info, '性別')) {
-            foreach ($doc->getElementsByTagName('th') as $th_dom) {
-                if ($th_dom->nodeValue == '性別') {
-                    $info->{'性別'} = trim($th_dom->nextSibling->nextSibling->nodeValue);
-                    break 2;
-                }
-            }
-
-            foreach ($doc->getElementById('catlinks')->getElementsByTagName('li') as $li_dom) {
-                if (in_array($li_dom->nodeValue, array('臺灣女性行政官員'))) {
-                    $info->{'性別'} = '女性';
-                    break 2;
-                }
-            }
-
-            break;
-        }
+       
 
         return $info;
     }
@@ -190,6 +179,12 @@ $query_and_cache = function($name){
         '郭澄' => false,
         '陳德華' => false,
         '李建中' => false,
+        '姚立德' => false,
+        '王秀紅' => false,
+        '王仁宏' => false,
+        '陳時中' => '陳時中_(政治人物)',
+        '陳豫' => false,
+        '韋端' => '韋伯韜',
     );
     if (array_key_exists($name, $map)) {
         $name = $map[$name];
@@ -208,7 +203,7 @@ $fp = fopen('sweetcow.csv', 'r');
 fgetcsv($fp);
 $other_gender = array();
 while ($rows = fgetcsv($fp)) {
-    $other_gender[$rows[1]] = $rows[5];
+    //$other_gender[$rows[1]] = $rows[5];
 }
 
 $fp = popen('cat 行政院-政務委員.csv 行政院-閣員.csv', 'r');
