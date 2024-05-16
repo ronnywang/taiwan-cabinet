@@ -6,7 +6,7 @@ class MyError extends Exception
 
 class WikiInfoGetter
 {
-    public static function query($name, $ori_name = null)
+    public static function query($name, $ori_name = null, $birth_year = null)
     {
         $target = __DIR__  . '/cache/' . $name . '.json';
         $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
@@ -39,7 +39,6 @@ class WikiInfoGetter
             } elseif ('48270' == $data->claims->P21[0]->mainsnak->datavalue->value->{'numeric-id'}) {
                 $info->{'性別'} = '無'; // au
             } else {
-                $info->{'性別'} = 'TODO';
                 error_log($data->claims->P21);
                 error_log("https://www.wikidata.org/wiki/{$data->id}");
                 error_log($url);
@@ -49,72 +48,10 @@ class WikiInfoGetter
             error_log($url);
             error_log($target);
             error_log("{$name} 找不到性別");
-            $info->{'性別'} = 'TODO';
         }
 
         if (property_exists($data->claims, 'P569')) { // 出生
-            $only_year_names = array(
-                '劉航琛',
-                '萬鴻圖',
-                '董文琦',
-                '王師曾_(涪陵)',
-                '余井塘',
-                '田炯錦',
-                '蔣勻田',
-                '陳雪屏',
-                '林金生',
-                '張劍寒',
-                '陳錦煌',
-                '張有惠',
-                '葉國興',
-                '林萬億',
-                '葉欣誠',
-                '吳政忠',
-                '陳美伶',
-                '鄭洪年',
-                '甘乃光',
-                '李惟果',
-                '賈景德',
-                '陳慶瑜',
-                '端木愷',
-                '彭昭賢',
-                '洪蘭友',
-                '王德溥',
-                '袁守謙',
-                '黃杰_(將軍)',
-                '陳大慶',
-                '劉攻芸',
-                '呂有文',
-                '劉維熾',
-                '鄭道儒',
-                '陶聲洋',
-                '宗才怡',
-                '沈榮津',
-                '端木傑',
-                '鄭水枝',
-                '顏春輝',
-                '王金茂',
-                '蔣丙煌',
-                '林一平',
-                '施能傑',
-                '林祖嘉',
-                '李金龍_(園藝)',
-                '石青陽',
-                '黃慕松',
-                '許世英',
-                '張祖恩',
-                '張國龍',
-                '陳重信',
-                '趙聚鈺',
-                '陳清秀',
-                '吳泰成',
-                '劉義周',
-                '陳英鈐',
-                '蘇蘅',
-                '詹婷怡',
-                '顧孟餘',
-                '張子敬',
-            );
+            $only_year_names = array();
             foreach ($data->claims->P569 as $claim) {
                 $datavalue = $claim->mainsnak->datavalue;
                 if ((in_array($name, $only_year_names) or $datavalue->value->precision == 11) and preg_match('#\+(\d+)-(\d+)-(\d+)T00:00:00Z#', $datavalue->value->time, $matches)) {
@@ -131,8 +68,8 @@ class WikiInfoGetter
                     break;
                 }
             }
-            if (!$info->{'出生'}) {
-                $info->{'出生'} = 'TODO';
+
+            if (!($info->{'出生'} ?? false)) {
                 /*error_log("找不到出生");
                 error_log(json_encode($data->claims->P569));
                 error_log("https://www.wikidata.org/wiki/{$data->id}");
@@ -140,8 +77,9 @@ class WikiInfoGetter
                 error_log($target);
                 exit;*/
             }
-        } else {
-            $info->{'出生'} = 'TODO';
+        }
+        if (!($info->{'出生'} ?? false) and $birth_year) {
+            $info->{'出生'} = $birth_year . '年';
         }
        
 
@@ -149,13 +87,11 @@ class WikiInfoGetter
     }
 }
 
-$query_and_cache = function($name, $ori_name = null){
+$query_and_cache = function($name, $ori_name = null, $birth_year = null){
     $map = array(
-        //'黃少谷' => '黃少谷_(政治)',
         '王世傑' => '王世杰_(1891年)',
         '王世杰' => '王世杰_(1891年)',
         '胡志強' => '胡志強_(1948年)',
-        //'王世杰' => '王世杰_(中華民國)',
         '王昭明' => '王昭明_(民國)',
         '李模' => false,
         '孫震' => '孫震_(臺灣學政界人物)',
@@ -164,13 +100,8 @@ $query_and_cache = function($name, $ori_name = null){
         '張國英' => '張國英_(中華民國將領)',
         '李文忠' => '李文忠_(臺灣)',
         '李大維' => '李大維_(外交官)',
-        //'謝志偉' => '謝志偉_(臺灣)',
-        //'黃杰' => '黃杰_(將軍)',
-        //'楊念祖' => '楊念祖_(臺灣學政界人物)',
-        //'李傑' => '李傑_(臺灣)',
         '王徵' => false, // 1948 年生
         '馮燕' => false,
-        //'嚴明' => '嚴明_(臺灣)',
         '吳京' => '吳京_(1934年)',
         '王志剛' => '王志剛_(中華民國)',
         '沈怡' => '沈怡_(政治人物)',
@@ -182,20 +113,8 @@ $query_and_cache = function($name, $ori_name = null){
         '張富美' => '張富美_(政治人物)',
         '陳建年' => '陳建年_(政治人物)',
         '王正誼' => '王正誼_(中華民國)',
-        //'瓦歷斯·貝林（蔡貴聰）' => '蔡貴聰',
-        //'夷將·拔路兒（劉文雄）' => '夷將·拔路兒',
-        //'王師曾' => '王師曾_(涪陵)',
-        //'王郡' => false,
-        //'郭澄' => false,
-        //'陳德華' => false,
         '楊金龍' => '楊金龍_(金融人物)',
         '李建中' => false,
-        //'姚立德' => false,
-        //'王秀紅' => false,
-        //'王仁宏' => false,
-        //'陳時中' => '陳時中_(政治人物)',
-        //'陳豫' => false,
-        //'韋端' => '韋伯韜',
         '潘世偉' => '潘世偉_(1955年)',
         '雷震' => false,
         '何佩珊' => '何佩珊_(台灣)',
@@ -213,7 +132,7 @@ $query_and_cache = function($name, $ori_name = null){
         throw new MyError("找不到名字 : $ori_name");
     }
 
-    $result = WikiInfoGetter::query($name, $ori_name);
+    $result = WikiInfoGetter::query($name, $ori_name, $birth_year);
     return $result;
 };
 
@@ -231,7 +150,7 @@ $output = fopen('php://output', 'w');
 fputcsv($output, array(
     '職稱','姓名','到職','卸任','出生','性別'
 ));
-$gender_map = array('男性' => 'M', '男' => 'M', '女性' => 'F', '女' => 'F', '無' => 'N', 'TODO' => 'T');
+$gender_map = array('男性' => 'M', '男' => 'M', '女性' => 'F', '女' => 'F', '無' => 'N');
 $zhengwei_gender = array();
 while ($rows = fgetcsv($fp)) {
     list($title, $name, $start, $end) = $rows;
@@ -239,7 +158,7 @@ while ($rows = fgetcsv($fp)) {
         continue;
     }
 
-    $ori_name = $name;
+    $ori_name = '' . $name;
     if (!$ori_name) {
         throw new Exception("找不到名字 : $ori_name");
     }
@@ -256,13 +175,16 @@ while ($rows = fgetcsv($fp)) {
             throw new MyError($failed[$name]);
         }
         $name = str_replace('（', '(', $name);
-        if (preg_match('#^([^()]+)\(\d+–(\d+)?\)$#u', $name, $matches)) {
+        $name = str_replace('）', ')', $name);
+        $birth_year = null;
+        if (preg_match('#^([^()]+)\((\d+)–(\d+)?\)$#u', $name, $matches)) {
             $name = $matches[1];
+            $birth_year = $matches[2] ?? null;
         }
         if (!$name) {
             throw new Exception("找不到名字 : $ori_name");
         }
-        $info = $query_and_cache($name, $ori_name);
+        $info = $query_and_cache($name, $ori_name, $birth_year);
         if (property_exists($info, '出生') and preg_match('#\d{4}年\d*月?\d*日?#u', $info->{'出生'}, $matches)) {
             $birth = $matches[0];
         }
