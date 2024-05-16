@@ -1,28 +1,28 @@
 <?php
 
-class Error extends Exception
+class MyError extends Exception
 {
 }
 
 class WikiInfoGetter
 {
-    public static function query($name)
+    public static function query($name, $ori_name = null)
     {
         $target = __DIR__  . '/cache/' . $name . '.json';
         $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
         if (file_exists($target)) {
             $content = file_get_contents($target);
         } else {
-            error_log($name . ' ' . $url);
+            error_log("geting {$name} ({$ori_name}) $url");
             $content = file_get_contents($url);
             if (!$content) {
-                throw new Error('404');
+                throw new MyError('404');
             }
             if (strpos($content, '羅列了有相同或相近的標題')) {
                 throw new Exception($name . ' 消歧義');
             }
             if (!preg_match('#"wgWikibaseItemId":"([^"]*)"#', $content, $matches)) {
-                throw new Error("找不到 wiki data id");
+                throw new MyError("找不到 wiki data id");
             }
             $content = file_get_Contents("https://www.wikidata.org/wiki/Special:EntityData/{$matches[1]}.json?v=" . time());
 
@@ -36,17 +36,20 @@ class WikiInfoGetter
                 $info->{'性別'} = '男';
             } elseif ('6581072' == $data->claims->P21[0]->mainsnak->datavalue->value->{'numeric-id'}) {
                 $info->{'性別'} = '女';
+            } elseif ('48270' == $data->claims->P21[0]->mainsnak->datavalue->value->{'numeric-id'}) {
+                $info->{'性別'} = '無'; // au
             } else {
-                print_r($data->claims->P21);
-                echo "https://www.wikidata.org/wiki/{$data->id}\n";
-                echo "$url\n";
-                echo $target . "\n";
-                exit;
+                $info->{'性別'} = 'TODO';
+                error_log($data->claims->P21);
+                error_log("https://www.wikidata.org/wiki/{$data->id}");
+                error_log($url);
+                error_log($target);
             }
         } else {
-            echo "$url\n";
-            echo $target . "\n";
-            throw new Exception("找不到性別");
+            error_log($url);
+            error_log($target);
+            error_log("{$name} 找不到性別");
+            $info->{'性別'} = 'TODO';
         }
 
         if (property_exists($data->claims, 'P569')) { // 出生
@@ -103,8 +106,6 @@ class WikiInfoGetter
                 '張國龍',
                 '陳重信',
                 '趙聚鈺',
-                '張國英',
-                '王正誼_(中華民國)',
                 '陳清秀',
                 '吳泰成',
                 '劉義周',
@@ -112,6 +113,7 @@ class WikiInfoGetter
                 '蘇蘅',
                 '詹婷怡',
                 '顧孟餘',
+                '張子敬',
             );
             foreach ($data->claims->P569 as $claim) {
                 $datavalue = $claim->mainsnak->datavalue;
@@ -130,23 +132,16 @@ class WikiInfoGetter
                 }
             }
             if (!$info->{'出生'}) {
-                print_r($data->claims->P569);
-                echo "https://www.wikidata.org/wiki/{$data->id}\n";
-                echo "$url\n";
-                echo $target . "\n";
-                exit;
+                $info->{'出生'} = 'TODO';
+                /*error_log("找不到出生");
+                error_log(json_encode($data->claims->P569));
+                error_log("https://www.wikidata.org/wiki/{$data->id}");
+                error_log($url);
+                error_log($target);
+                exit;*/
             }
         } else {
-            $skip_birth = array(
-                '吳宏謀',
-                '郝鳳鳴',
-                '陳時中_(政治人物)',
-            );
-            if (!in_array($name, $skip_birth)) {
-                echo "$url\n";
-                echo $target . "\n";
-                throw new Exception("找不到出生");
-            }
+            $info->{'出生'} = 'TODO';
         }
        
 
@@ -154,46 +149,58 @@ class WikiInfoGetter
     }
 }
 
-$query_and_cache = function($name){
+$query_and_cache = function($name, $ori_name = null){
     $map = array(
-        '黃少谷' => '黃少谷_(政治)',
-        '王世傑' => '王世杰_(中華民國)',
-        '王世杰' => '王世杰_(中華民國)',
-        '王昭明' => '王昭明_(台灣)',
+        //'黃少谷' => '黃少谷_(政治)',
+        '王世傑' => '王世杰_(1891年)',
+        '王世杰' => '王世杰_(1891年)',
+        '胡志強' => '胡志強_(1948年)',
+        //'王世杰' => '王世杰_(中華民國)',
+        '王昭明' => '王昭明_(民國)',
         '李模' => false,
         '孫震' => '孫震_(臺灣學政界人物)',
         '陳健民' => '陳健民_(立法委員)',
         '傅立葉' => false,
+        '張國英' => '張國英_(中華民國將領)',
+        '李文忠' => '李文忠_(臺灣)',
         '李大維' => '李大維_(外交官)',
-        '謝志偉' => '謝志偉_(臺灣)',
-        '黃杰' => '黃杰_(將軍)',
-        '楊念祖' => '楊念祖_(臺灣學政界人物)',
-        '李傑' => '李傑_(臺灣)',
-        '王徵' => false,
+        //'謝志偉' => '謝志偉_(臺灣)',
+        //'黃杰' => '黃杰_(將軍)',
+        //'楊念祖' => '楊念祖_(臺灣學政界人物)',
+        //'李傑' => '李傑_(臺灣)',
+        '王徵' => false, // 1948 年生
         '馮燕' => false,
-        '嚴明' => '嚴明_(臺灣)',
-        '吳京' => '吳京_(學者)',
+        //'嚴明' => '嚴明_(臺灣)',
+        '吳京' => '吳京_(1934年)',
         '王志剛' => '王志剛_(中華民國)',
-        '沈怡' => '沈怡_(官員)',
+        '沈怡' => '沈怡_(政治人物)',
         '李金龍' => '李金龍_(園藝)',
         '陳武雄' => '陳武雄_(農業專家)',
+        '陳志清' => '陳志清_(1952年)',
         '陳明仁' => false,
         '陳冲' => '陳冲_(臺灣)',
+        '張富美' => '張富美_(政治人物)',
         '陳建年' => '陳建年_(政治人物)',
         '王正誼' => '王正誼_(中華民國)',
-        '瓦歷斯·貝林（蔡貴聰）' => '蔡貴聰',
-        '夷將·拔路兒（劉文雄）' => '夷將·拔路兒',
-        '王師曾' => '王師曾_(涪陵)',
-        '王郡' => false,
-        '郭澄' => false,
-        '陳德華' => false,
+        //'瓦歷斯·貝林（蔡貴聰）' => '蔡貴聰',
+        //'夷將·拔路兒（劉文雄）' => '夷將·拔路兒',
+        //'王師曾' => '王師曾_(涪陵)',
+        //'王郡' => false,
+        //'郭澄' => false,
+        //'陳德華' => false,
+        '楊金龍' => '楊金龍_(金融人物)',
         '李建中' => false,
-        '姚立德' => false,
-        '王秀紅' => false,
-        '王仁宏' => false,
-        '陳時中' => '陳時中_(政治人物)',
-        '陳豫' => false,
-        '韋端' => '韋伯韜',
+        //'姚立德' => false,
+        //'王秀紅' => false,
+        //'王仁宏' => false,
+        //'陳時中' => '陳時中_(政治人物)',
+        //'陳豫' => false,
+        //'韋端' => '韋伯韜',
+        '潘世偉' => '潘世偉_(1955年)',
+        '雷震' => false,
+        '何佩珊' => '何佩珊_(台灣)',
+        '陳良' => '陳良_(1896年)',
+        '張明哲' => '張明哲_(1914年)',
     );
     if (array_key_exists($name, $map)) {
         $name = $map[$name];
@@ -202,7 +209,11 @@ $query_and_cache = function($name){
         return new StdClass;
     }
 
-    $result = WikiInfoGetter::query($name);
+    if (!$name) {
+        throw new MyError("找不到名字 : $ori_name");
+    }
+
+    $result = WikiInfoGetter::query($name, $ori_name);
     return $result;
 };
 
@@ -220,7 +231,7 @@ $output = fopen('php://output', 'w');
 fputcsv($output, array(
     '職稱','姓名','到職','卸任','出生','性別'
 ));
-$gender_map = array('男性' => 'M', '男' => 'M', '女性' => 'F', '女' => 'F');
+$gender_map = array('男性' => 'M', '男' => 'M', '女性' => 'F', '女' => 'F', '無' => 'N', 'TODO' => 'T');
 $zhengwei_gender = array();
 while ($rows = fgetcsv($fp)) {
     list($title, $name, $start, $end) = $rows;
@@ -228,6 +239,10 @@ while ($rows = fgetcsv($fp)) {
         continue;
     }
 
+    $ori_name = $name;
+    if (!$ori_name) {
+        throw new Exception("找不到名字 : $ori_name");
+    }
     $name = preg_replace('#（二次）#', '', $name);
     $name = str_replace(' ', '', $name);
     $name = str_replace('　', '', $name);
@@ -238,9 +253,16 @@ while ($rows = fgetcsv($fp)) {
 
     try {
         if (array_key_exists($name, $failed)) {
-            throw new Error($failed[$name]);
+            throw new MyError($failed[$name]);
         }
-        $info = $query_and_cache($name);
+        $name = str_replace('（', '(', $name);
+        if (preg_match('#^([^()]+)\(\d+–(\d+)?\)$#u', $name, $matches)) {
+            $name = $matches[1];
+        }
+        if (!$name) {
+            throw new Exception("找不到名字 : $ori_name");
+        }
+        $info = $query_and_cache($name, $ori_name);
         if (property_exists($info, '出生') and preg_match('#\d{4}年\d*月?\d*日?#u', $info->{'出生'}, $matches)) {
             $birth = $matches[0];
         }
@@ -251,13 +273,19 @@ while ($rows = fgetcsv($fp)) {
             }
             $gender = $gender_map[$gender];
         }
-    } catch (Error $e) {
+    } catch (MyError $e) {
         $failed[$name] = $e->getMessage();
         file_put_contents('failed', json_encode($failed, JSON_UNESCAPED_UNICODE));
+    }
+    if ($name === '') {
+        throw new Exception("找不到名字 : $ori_name");
     }
     if (array_key_exists(4, $rows)) {
         if (!$rows[4] and $gender) {
             $rows[4] = $gender;
+        }
+        if ($gender == 'T' and $rows[4] != 'T') {
+            $gender = $rows[4];
         }
         if ($gender and $gender != $rows[4]) {
             throw new Exception("{$name} 的性別不同步 {$gender} != {$rows[4]}");

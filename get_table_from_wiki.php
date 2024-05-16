@@ -7,10 +7,11 @@ class WikiTableParser
     public function getTable($name)
     {
         $target = __DIR__ . '/cache/' . $name . '.json';
+        $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
+        error_log($url);
         if (file_exists($target)) {
             $content = file_get_contents($target);
         } else {
-            $url = 'https://zh.wikipedia.org/zh-tw/' . urlencode($name);
             $content = file_get_contents($url);
             file_put_contents($target, $content);
         }
@@ -64,9 +65,10 @@ class WikiTableParser
                             }
                             if (!array_key_exists($col, $columns)) {
                                 $columns[$col] = trim($th_dom->nodeValue);
-                            } else{
+                            } elseif ($columns[$col] != trim($th_dom->nodeValue)) {
                                 $columns[$col] .= '/' . trim($th_dom->nodeValue);
                             }
+                            $columns[$col] = preg_replace('#\[\d+\]$#', '', $columns[$col]);
                             $col ++;
                             while (array_key_exists($col, $span_line)) {
                                 $col ++;
@@ -117,8 +119,9 @@ class WikiTableParser
                         continue;
                     }
                     if (count($columns) != count($values)) {
-                        vaR_dump($columns);
-                        var_dump($values);
+                        error_log($name . ' columns=' . json_encode($columns, JSON_UNESCAPED_UNICODE));
+                        error_log($name . ' values=' . json_encode($values, JSON_UNESCAPED_UNICODE));
+                        continue;
                         throw new Exception("column value failed");
                     }
                     $rows = array_combine($columns, $values);
@@ -146,6 +149,12 @@ echo "職稱,姓名,到職,卸任\n";
 $result = array();
 
 $add_result = function($title, $name, $start, $end) use (&$result, $prev_date) {
+    if (!$name) {
+        return;
+    }
+    if (!$start) {
+        throw new Exception("start date not found: {$title} {$name}");
+    }
     $result[] = array(
         $title,
         $name,
@@ -211,9 +220,6 @@ foreach ($tables[1] as $record) {
 $k = '內政部/部長';
 $tables = WikiTableParser::getTable('中華民國內政部');
 foreach ($tables[0] as $record) {
-    if ('中華民國內政部部長' != $record['group']) {
-        continue;
-    }
     $add_result(
         $k,
         $record['姓名'],
@@ -224,10 +230,10 @@ foreach ($tables[0] as $record) {
 
 $k = '外交部/部長';
 $tables = WikiTableParser::getTable('中華民國外交部');
-foreach ($tables[3] as $record) {
+foreach ($tables[0] as $record) {
     $add_result(
         $k,
-        $record['姓　名'],
+        $record['姓名'],
         $record['上任日期'],
         $record['離任日期']
     );
@@ -239,8 +245,8 @@ foreach ($tables[9] as $record) {
     $add_result(
         $k,
         $record['姓名'],
-        $record['就職時間'],
-        $record['卸任時間']
+        $record['任職時間'],
+        $record['離職時間']
     );
 }
 
@@ -317,6 +323,11 @@ foreach ($tables[0] as $id => $record) {
     } else {
         $k = '勞動部/部長';
     }
+
+    if (!($record['姓名'] ?? false)) {
+        error_log(json_encode($record, JSON_UNESCAPED_UNICODE));
+        continue;
+    }
         
     $add_result(
         $k,
@@ -337,6 +348,9 @@ foreach ($tables[0] as $id => $record) {
         continue;
     }
 
+    if (!($record['姓名'] ?? false)) {
+        continue;
+    }
     $add_result(
         $k,
         $record['姓名'],
@@ -453,8 +467,8 @@ foreach ($tables[0] as $id => $record) {
     );
 }
 
-$k = '行政院環境保護署/署長';
-$tables = WikiTableParser::getTable('行政院環境保護署');
+$k = '中華民國環境部/署長';
+$tables = WikiTableParser::getTable('中華民國環境部');
 foreach ($tables[0] as $id => $record) {
     $add_result(
         $k,
@@ -464,14 +478,15 @@ foreach ($tables[0] as $id => $record) {
     );
 }
 
-$k = '行政院海岸巡防署/署長';
-$tables = WikiTableParser::getTable('行政院海岸巡防署');
-foreach ($tables[0] as $id => $record) {
+$k = '海洋委員會海巡署/署長';
+$tables = WikiTableParser::getTable('海洋委員會海巡署');
+foreach (array_merge($tables[0], $tables[1]) as $id => $record) {
+    list($start, $end) = explode('－', $record['任職期間']);
     $add_result(
         $k,
         $record['姓名'],
-        $record['就職時間'],
-        $record['卸任時間']
+        $start,
+        $end,
     );
 }
 
@@ -627,7 +642,7 @@ foreach ($tables as $table) {
 
 $k = '行政院/院長';
 $tables = WikiTableParser::getTable('行政院院長');
-foreach ($tables[1] as $id => $record) {
+foreach ($tables[0] as $id => $record) {
     $add_result(
         $k,
         $record['姓名'],
